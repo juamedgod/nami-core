@@ -238,6 +238,49 @@ clearInterval(id);
   after(function() {
     server.close();
   });
+  describe('Browser features fixups', function() {
+    describe('Forms dynamic properties', function() {
+      let browser = null;
+      before(function() {
+        server.addRoute('get', '/formfields', function() {
+          this.res.writeHead(200);
+          this.res.end(
+          `
+<html>
+  <head></head>
+  <body>
+    <form id="myFormID" name="myFormName" method="post" action="/testform_submit">
+      <input id="id_field1" name="name_field1" type="text" maxlength="255" value="value1"/>
+      <input id="id_field2" name="name_field2" type="text" maxlength="255" value="value2"/>
+      <input id="submit" name="submit" type="submit" value=""/>
+    </form>
+  </body>
+</html>
+`
+          );
+        });
+        browser = new $Browser();
+        browser.visit(abs('/formfields')).exec();
+      });
+      it('Allows accessing forms by name', function() {
+        expect(browser.evaluate(`document.myFormName.id`)).to.be.eql('myFormID');
+        expect(browser.evaluate(`document.myFormID`)).to.be.eql(undefined);
+      });
+      it('Allows accessing form attributes by name and id', function() {
+        expect(browser.evaluate(`document.myFormName.id`)).to.be.eql('myFormID');
+        expect(browser.evaluate(`document.myFormName.id_field1.value`)).to.be.eql('value1');
+        expect(browser.evaluate(`document.myFormName.name_field1.value`)).to.be.eql('value1');
+      });
+      it('Existing attributes are not overwritten by dynamic properties', function() {
+        // it returns an object describing the <input>
+        expect(browser.evaluate(`typeof document.myFormName.id_field1`)).to.be.eql('object');
+        // returns the submit input
+        expect(browser.evaluate(`document.myFormName.elements['submit'].type`)).to.be.eql('submit');
+        // it returns the original submit callback, not the attribute name
+        expect(browser.evaluate(`typeof document.myFormName.submit`)).to.be.eql('function');
+      });
+    });
+  });
   describe('#visit()', function() {
     it('Allows visiting an url (Plain text)', function(done) {
       b = new $Browser();
@@ -315,11 +358,51 @@ clearInterval(id);
     });
   });
   describe('#press()', function() {
+    let browser = null;
+    before(function() {
+      server.addRoute('get', '/button-press', function() {
+        this.res.writeHead(200);
+        this.res.end(
+          `
+<html>
+  <head>
+    <script>
+      function clicked(element) {
+        document.write(JSON.stringify({"id": element.id}));
+        return false;
+      }
+    </script>
+  </head>
+  <body>
+    <form id="myFormID" name="myFormName" method="post" action="/testform_submit">
+      <input id="id_field1" name="name_field1" type="button" value="Send1" onclick="return clicked(this)"/>
+      <input id="id_field2" name="name_field2" type="reset" value="Send2" onclick="return clicked(this)"/>
+      <input id="id_field3" name="name_field3" type="submit" value="Send3" onclick="return clicked(this)"/>
+      <button id="id_field4" name="name_field4" type="button" value="Send4" onclick="return clicked(this)"/>
+    </form>
+  </body>
+</html>
+`
+        );
+      });
+      browser = new $Browser();
+      browser.visit(abs('/button-press')).exec();
+    });
     it('Allows Pressing a button', function() {
-      b.visit(testFormUrl).press('Send').exec();
-      expect(JSON.parse(b.text)).to.containSubset({
-        name_field: '',
-        company_field: ''
+      _.each({
+        Send1: 'id_field1',
+        Send2: 'id_field2',
+        Send3: 'id_field3',
+        Send4: 'id_field4',
+        name_field1: 'id_field1',
+        name_field2: 'id_field2',
+        name_field3: 'id_field3',
+        name_field4: 'id_field4'
+      }, (id, selector) => {
+        b.visit(abs('/button-press')).press(selector).exec();
+        expect(JSON.parse(b.text)).to.containSubset({
+          id: id
+        });
       });
     });
   });
