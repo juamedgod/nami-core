@@ -1,6 +1,6 @@
 {
   "name": "nami-core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Nami core files",
   "repository": {
     "type": "git",
@@ -29,6 +29,7 @@
     "zombie": "https://github.com/bitnami/zombie/releases/download/4.2.1/zombie-4.2.1.tgz",
     "deasync": "^0.1.7",
     "mocha": "^2.3.3",
+    "mocha-multi": "^0.9.0",
     "chai": "^3.5.0",
     "chai-fs": "git+https://github.com/bitnami/chai-fs.git",
     "chai-subset": "^1.2.2"
