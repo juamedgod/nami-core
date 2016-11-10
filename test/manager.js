@@ -278,6 +278,14 @@ a + b;
           manager.unpack(pkgDir);
         }).to.not.throw();
       });
+      it('Throws error if default value for parameters is not a valid choice', function() {
+        const pkgDir = samplePackageFromScratch({
+          id: 'invalidChoice', properties: {language: {type: 'choice', default: '', choices: ['en_GB', 'es_ES']}}
+        });
+        expect(function() {
+          manager.unpack(pkgDir);
+        }).to.throw('language must provide a valid list of options');
+      });
 
       createArgumentParsingTests('unpack');
       it('Executes all the unpack hooks', function() {
