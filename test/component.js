@@ -19,6 +19,15 @@ const types = {Service: Service, Component: Component};
 
 chai.use(chaiSubset);
 chai.use(chaiFs);
+function getUserAndGroup(dir) {
+  let data = execSync(`ls -ld ${dir}`).toString().trim().split(/\s+/);
+  const username = data[2];
+  const group = data[3];
+  data = execSync(`ls -nld ${dir}`).toString().trim().split(/\s+/);
+  const uid = parseInt(data[2], 10);
+  const gid = parseInt(data[3], 10);
+  return {username, group, uid, gid};
+}
 
 describe('Components', function() {
   let manager = null;
@@ -545,6 +554,55 @@ return options.shout ? text + '!' : text;
           component.start();
           expect(component.pidFile).to.be.a.file();
           expect(process.kill(getPid(), 0)).to.be.eql(true);
+        });
+        describe('Automatic temp and logs dir creation', function() {
+          function ensureOwnership(dir, username, group) {
+            const ownership = getUserAndGroup(dir);
+            const userData = _.isNumber(username) ? ownership.uid : ownership.username;
+            const groupData = _.isNumber(group) ? ownership.gid : ownership.group;
+            expect(userData).to.be.equal(username);
+            expect(groupData).to.be.equal(group);
+          }
+          function getDirsToTest() {
+            return [component.tmpDir, component.logsDir];
+          }
+
+          beforeEach(function() {
+            cleanUp();
+            _.each(getDirsToTest(), function(dir) {
+              fs.removeSync(dir);
+            });
+          });
+
+          it('Creates temp and log dirs when starting with proper ownership if not present', function() {
+            const dirs = getDirsToTest();
+            _.each(dirs, dir => expect(dir).to.not.be.a.path());
+            component.start();
+            _.each(dirs, dir => expect(dir).to.be.a.directory());
+            if (process.getuid() === 0) {
+              _.each(dirs, dir => ensureOwnership(dir, component.serviceUser, component.serviceGroup));
+            }
+            expect(component.pidFile).to.be.a.file();
+            expect(process.kill(getPid(), 0)).to.be.eql(true);
+          });
+          if (process.getuid() === 0) {
+            it('Do not modifies ownership of directories if they are already present', function() {
+              const dirs = getDirsToTest();
+              _.each(dirs, dir => {
+                expect(dir).to.not.be.a.path();
+                fs.mkdirSync(dir);
+                fs.chownSync(dir, process.getuid(), process.getgid());
+                expect(dir).to.be.a.directory();
+              });
+              component.start();
+              _.each(dirs, dir => {
+                expect(dir).to.be.a.directory();
+                ensureOwnership(dir, process.getuid(), process.getgid());
+              });
+              expect(component.pidFile).to.be.a.file();
+              expect(process.kill(getPid(), 0)).to.be.eql(true);
+            });
+          }
         });
       });
       describe('#stop()', function() {

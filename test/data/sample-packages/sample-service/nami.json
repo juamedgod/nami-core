@@ -6,13 +6,16 @@
   "author": {"name": "Your Company", "url": "https://example.com"},
   "version": "1.0.0",
   "properties": {
+    "serviceUser": {"default": "root"},
+    "serviceGroup": {"default": "daemon"}
   },
   "service": {
     "pidFile": "{{$app.tmpDir}}/service.pid",
     "logFile": "{{$app.logsDir}}/service.log",
     "start": {
       "timeout": 10,
-      "username": "root",
+      "username": "{{$app.serviceUser}}",
+      "group": "{{$app.serviceGroup}}",
       "command": "./ctlscript.sh start"
     }
   },
