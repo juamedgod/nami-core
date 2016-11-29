@@ -239,12 +239,17 @@ clearInterval(id);
     server.close();
   });
   describe('Browser features fixups', function() {
-    describe('Forms dynamic properties', function() {
-      let browser = null;
-      before(function() {
-        server.addRoute('get', '/formfields', function() {
-          this.res.writeHead(200);
-          this.res.end(
+    function getSafeBrowser() {
+      return new $Browser();
+    }
+    function getUnsafeBrowser() {
+      return new $Browser({fixups: ['forms_by_id']});
+    }
+
+    before(function() {
+      server.addRoute('get', '/formfields', function() {
+        this.res.writeHead(200);
+        this.res.end(
           `
 <html>
   <head></head>
@@ -257,27 +262,59 @@ clearInterval(id);
   </body>
 </html>
 `
-          );
+        );
+      });
+    });
+    // Both should pass the basic fixups
+    _.each({
+      'safe': getSafeBrowser,
+      'experimental': getUnsafeBrowser
+    }, (getBrowser, kind) => {
+      const browser = getBrowser();
+      describe(`Safe fixups (${kind} browser)`, function() {
+        before(function() {
+          browser.visit(abs('/formfields')).exec();
         });
-        browser = new $Browser();
-        browser.visit(abs('/formfields')).exec();
+        describe('Forms dynamic properties', function() {
+          it('Allows accessing forms by name', function() {
+            expect(browser.evaluate(`document.myFormName.id`)).to.be.eql('myFormID');
+            expect(browser.evaluate(`document.myFormID`)).to.be.eql(undefined);
+          });
+          it('Allows accessing form attributes by name and id', function() {
+            expect(browser.evaluate(`document.myFormName.id`)).to.be.eql('myFormID');
+            expect(browser.evaluate(`document.myFormName.id_field1.value`)).to.be.eql('value1');
+            expect(browser.evaluate(`document.myFormName.name_field1.value`)).to.be.eql('value1');
+          });
+          it('Existing attributes are not overwritten by dynamic properties', function() {
+            // it returns an object describing the <input>
+            expect(browser.evaluate(`typeof document.myFormName.id_field1`)).to.be.eql('object');
+            // returns the submit input
+            expect(browser.evaluate(`document.myFormName.elements['submit'].type`)).to.be.eql('submit');
+            // it returns the original submit callback, not the attribute name
+            expect(browser.evaluate(`typeof document.myFormName.submit`)).to.be.eql('function');
+          });
+        });
       });
-      it('Allows accessing forms by name', function() {
-        expect(browser.evaluate(`document.myFormName.id`)).to.be.eql('myFormID');
-        expect(browser.evaluate(`document.myFormID`)).to.be.eql(undefined);
+    });
+    // Only the unsafe browser should pass. This will make easier removing
+    // unnecessary fixes if they get resolved in zombie or jsdom
+    describe('Unsafe fixups', function() {
+      let safeBrowser = null;
+      let experimentalBrowser = null;
+      before(function() {
+        safeBrowser = getSafeBrowser();
+        experimentalBrowser = getUnsafeBrowser();
+        _.each([safeBrowser, experimentalBrowser], browser => {
+          browser.visit(abs('/formfields')).exec();
+        });
       });
-      it('Allows accessing form attributes by name and id', function() {
-        expect(browser.evaluate(`document.myFormName.id`)).to.be.eql('myFormID');
-        expect(browser.evaluate(`document.myFormName.id_field1.value`)).to.be.eql('value1');
-        expect(browser.evaluate(`document.myFormName.name_field1.value`)).to.be.eql('value1');
-      });
-      it('Existing attributes are not overwritten by dynamic properties', function() {
-        // it returns an object describing the <input>
-        expect(browser.evaluate(`typeof document.myFormName.id_field1`)).to.be.eql('object');
-        // returns the submit input
-        expect(browser.evaluate(`document.myFormName.elements['submit'].type`)).to.be.eql('submit');
-        // it returns the original submit callback, not the attribute name
-        expect(browser.evaluate(`typeof document.myFormName.submit`)).to.be.eql('function');
+      it('Allows accessing forms by id in the "forms" collection', function() {
+        const code = `document.forms['myFormID'].id`;
+        expect(experimentalBrowser.evaluate(code)).to.be.eql('myFormID');
+
+        expect(function() {
+          safeBrowser.evaluate(code);
+        }).to.throw(`Cannot read property 'id' of undefined`);
       });
     });
   });
