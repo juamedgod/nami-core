@@ -22,7 +22,7 @@
     "nami-logger": "^0.0.1",
     "cmd-parser": "^0.0.2",
     "nami-test": "^0.0.1",
-    "joi": "^8.4.2",
+    "joi": "^10.0.1",
     "jsonlint": "^1.6.2",
     "lodash": "^3.10.1",
     "semver": "^5.1.0",
