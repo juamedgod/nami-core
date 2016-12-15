@@ -242,8 +242,11 @@ clearInterval(id);
     function getSafeBrowser() {
       return new $Browser();
     }
-    function getUnsafeBrowser() {
+    function getFormsByIdFixupBrowser() {
       return new $Browser({fixups: ['forms_by_id']});
+    }
+    function getPreventDefaultFixupBrowser() {
+      return new $Browser({fixups: ['bubble_up']});
     }
 
     before(function() {
@@ -264,11 +267,42 @@ clearInterval(id);
 `
         );
       });
+      /* eslint-disable max-len */
+      server.addRoute('get', '/form_events', function() {
+        this.res.writeHead(200);
+        this.res.end(
+          `
+<html>
+  <head>
+    <script>
+      document.events = [];
+          function trackEvent(eventName, bubbleUp) {
+            document.events.push(eventName);
+            return !!bubbleUp;
+          }
+    </script>
+  </head>
+  <body>
+    <form id="install_install1" method="post" onsubmit="return trackEvent('submit_form', true);" action="/testform_submit">
+      <input type="submit" id="submit_bubble" onclick="return trackEvent('click_bubble', true);" name="submit_bubble" value="Bubble">
+      <input type="submit" id="submit_no_bubble" onclick="return trackEvent('click_no_bubble', false);" name="submit_no_bubble" value="Do Not Bubble">
+    </form>
+    <!-- If we do not return, events should always bubble up -->
+    <form id="install_install2" method="post" onsubmit="trackEvent('submit_form');" action="/testform_submit">
+      <input type="submit" id="submit_always_bubble" onclick="trackEvent('click_always_bubble');" name="submit_always_bubble" value="Always Bubble">
+    </form>
+  </body>
+</html>
+`
+        );
+      });
     });
+    /* eslint-enable max-len */
     // Both should pass the basic fixups
     _.each({
       'safe': getSafeBrowser,
-      'experimental': getUnsafeBrowser
+      'forms_by_id': getFormsByIdFixupBrowser,
+      'prevent_default': getPreventDefaultFixupBrowser
     }, (getBrowser, kind) => {
       const browser = getBrowser();
       describe(`Safe fixups (${kind} browser)`, function() {
@@ -299,18 +333,62 @@ clearInterval(id);
     // Only the unsafe browser should pass. This will make easier removing
     // unnecessary fixes if they get resolved in zombie or jsdom
     describe('Unsafe fixups', function() {
-      let safeBrowser = null;
-      let experimentalBrowser = null;
-      before(function() {
-        safeBrowser = getSafeBrowser();
-        experimentalBrowser = getUnsafeBrowser();
-        _.each([safeBrowser, experimentalBrowser], browser => {
-          browser.visit(abs('/formfields')).exec();
+      describe('Events properly bubble up unless explicit false return', function() {
+        let safeBrowser = null;
+        let preventDefaultBrowser = null;
+        beforeEach(function() {
+          safeBrowser = getSafeBrowser();
+          safeBrowser.visit(abs('/form_events')).exec();
+
+          preventDefaultBrowser = getPreventDefaultFixupBrowser();
+          preventDefaultBrowser.visit(abs('/form_events')).exec();
+        });
+        // Explicit bubble and not bubble should always work
+        _.each({
+          'Do Not Bubble': {
+            expected_events: ['click_no_bubble'],
+            expected_uri: '/form_events'
+          },
+          'Bubble': {
+            expected_events: ['click_bubble', 'submit_form'],
+            expected_uri: '/testform_submit'
+          }
+        }, function(testData, button) {
+          it(button, function() {
+            _.each([preventDefaultBrowser, safeBrowser], function(browser) {
+              const doc = browser.document;
+              browser.press(button).exec();
+              expect(doc.events).to.be.eql(testData.expected_events);
+              expect(browser.url).to.match(new RegExp(`${testData.expected_uri}$`));
+            });
+          });
+        });
+        it('Always Bubble', function() {
+          const docSafe = safeBrowser.document;
+          const doc = preventDefaultBrowser.document;
+
+          preventDefaultBrowser.press('Always Bubble').exec();
+          safeBrowser.press('Always Bubble').exec();
+
+          expect(safeBrowser.url).to.match(/.*\/form_events$/);
+          expect(docSafe.events).to.be.eql(
+            ['click_always_bubble']
+          );
+
+          expect(preventDefaultBrowser.url).to.match(/.*\/testform_submit$/);
+          expect(doc.events).to.be.eql(
+            ['click_always_bubble', 'submit_form']
+          );
         });
       });
+
       it('Allows accessing forms by id in the "forms" collection', function() {
+        const safeBrowser = getSafeBrowser();
+        safeBrowser.visit(abs('/formfields')).exec();
         const code = `document.forms['myFormID'].id`;
-        expect(experimentalBrowser.evaluate(code)).to.be.eql('myFormID');
+        const formsByIdFixupBrowser = getFormsByIdFixupBrowser();
+        formsByIdFixupBrowser.visit(abs('/formfields')).exec();
+        expect(formsByIdFixupBrowser.evaluate(code)).to.be.eql('myFormID');
 
         expect(function() {
           safeBrowser.evaluate(code);
