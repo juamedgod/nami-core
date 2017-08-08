@@ -1,6 +1,6 @@
 {
   "name": "nami-core",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Nami core files",
   "repository": {
     "type": "git",
@@ -18,7 +18,7 @@
   "author": "Bitnami",
   "license": "GPL-2.0",
   "dependencies": {
-    "nami-utils": "^0.1.0",
+    "nami-utils": "^0.2.2",
     "nami-logger": "^0.0.1",
     "cmd-parser": "^0.0.2",
     "nami-test": "^0.0.1",
