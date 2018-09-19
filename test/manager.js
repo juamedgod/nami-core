@@ -34,7 +34,7 @@ describe('Manager', function() {
     });
     it('Lists installed packages', function() {
       const result = manager.listPackages();
-      const ids = _.pluck(_.sortBy(result, 'id'), 'id');
+      const ids = _.map(_.sortBy(result, 'id'), 'id');
       expect(ids).to.be.an('array').and.to.eql(['A', 'B', 'C', 'D']);
     });
   });
@@ -325,7 +325,7 @@ a + b;
           expect(component.lifecycle).to.be.eql('unpacked');
           expect(function() {
             manager.initializePackage(component.id);
-          }).to.throw('password cannot be empty');
+          }).to.throw('The following options are required: password');
           expect(function() {
             const initializationOpts = argsMode === 'raw' ? {args: [`--password=${password}`]} : {
               hashArgs: {password: password}
@@ -363,7 +363,7 @@ a + b;
         // Ensure is an empty manager
         expect(_.keys(manager.listPackages())).to.be.an('array').and.to.have.length(0);
         const component = installSamplePackage(sampleID);
-        expect(_.pluck(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([sampleID]);
+        expect(_.map(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([sampleID]);
         const files = ['bin', 'bin/hp-build', 'bin/hp-compress', 'docs', 'docs/chapters', 'docs/chapters/2.txt',
                        'docs/chapters/3.txt', 'docs/chapters/1.txt', 'docs/index.txt'];
         _.each(files, function(p) {
@@ -391,7 +391,7 @@ a + b;
           const password = 'foo';
           expect(function() {
             manager.install(pkgDir);
-          }).to.throw('password cannot be empty');
+          }).to.throw('The following options are required: password');
           const initializationOpts = argsMode === 'raw' ? {args: ['--password=foo']} : {hashArgs: {password: 'foo'}};
 
           expect(function() {
@@ -607,7 +607,7 @@ Object.keys($modules['com.bitnami.dependency_package']).sort()
       // Ensure is an empty manager
       expect(_.keys(manager.listPackages())).to.be.an('array').and.to.have.length(0);
       const component = installSamplePackage(sampleID);
-      expect(_.pluck(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([sampleID]);
+      expect(_.map(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([sampleID]);
       const files = ['bin', 'bin/hp-build', 'bin/hp-compress', 'docs', 'docs/chapters', 'docs/chapters/2.txt',
                      'docs/chapters/3.txt', 'docs/chapters/1.txt', 'docs/index.txt'];
       _.each(files, function(p) {
@@ -637,14 +637,14 @@ Object.keys($modules['com.bitnami.dependency_package']).sort()
         id: sampleID,
         mainJS: '$app.preUninstallation = function() { throw new Error(\'Sample uninstall error\')};'
       });
-      expect(_.pluck(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([]);
+      expect(_.map(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([]);
       manager.install(pkgDir);
       manager.reload();
-      expect(_.pluck(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([sampleID]);
+      expect(_.map(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([sampleID]);
       expect(function() {
         manager.uninstall(sampleID);
       }).to.throw();
-      expect(_.pluck(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([sampleID]);
+      expect(_.map(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([sampleID]);
     });
     it('Only can uninstall packages installed as root when running as root', function() {
       const unprivilegedUninstallError = 'This package was installed as root. Refusing' +
