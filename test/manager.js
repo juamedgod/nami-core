@@ -365,7 +365,7 @@ a + b;
         const component = installSamplePackage(sampleID);
         expect(_.map(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([sampleID]);
         const files = ['bin', 'bin/hp-build', 'bin/hp-compress', 'docs', 'docs/chapters', 'docs/chapters/2.txt',
-                       'docs/chapters/3.txt', 'docs/chapters/1.txt', 'docs/index.txt'];
+          'docs/chapters/3.txt', 'docs/chapters/1.txt', 'docs/index.txt'];
         _.each(files, function(p) {
           expect(path.join(component.installdir, p)).to.be.a.path();
         });
@@ -609,7 +609,7 @@ Object.keys($modules['com.bitnami.dependency_package']).sort()
       const component = installSamplePackage(sampleID);
       expect(_.map(manager.listPackages(), 'id')).to.be.an('array').and.to.eql([sampleID]);
       const files = ['bin', 'bin/hp-build', 'bin/hp-compress', 'docs', 'docs/chapters', 'docs/chapters/2.txt',
-                     'docs/chapters/3.txt', 'docs/chapters/1.txt', 'docs/index.txt'];
+        'docs/chapters/3.txt', 'docs/chapters/1.txt', 'docs/index.txt'];
       _.each(files, function(p) {
         expect(path.join(component.installdir, p)).to.be.a.path();
       });
